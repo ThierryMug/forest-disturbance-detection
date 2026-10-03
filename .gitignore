@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Data and generated outputs are reproducible from the scripts; do not commit them.
+data/
+models/
+results/
+spark-warehouse/
+metastore_db/
+derby.log

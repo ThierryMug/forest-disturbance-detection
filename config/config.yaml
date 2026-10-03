@@ -1,0 +1,97 @@
+# Central configuration. Every script takes --config (default: this file).
+# Change values here, not in code, and record departures in docs/project_log.md.
+
+project:
+  seed: 42                 # split assignment, sampling, subset selection
+  model_seeds: [42, 43, 44] # repeated autoencoder fits (drop to [42] if short on time)
+
+paths:
+  raw_dir: data/raw              # CSVs exported from Earth Engine
+  processed_dir: data/processed  # Parquet + split assignment
+  bench_dir: data/bench          # nested benchmark subsets and outputs
+  models_dir: models
+  results_dir: results
+
+gee:
+  project: null            # your Google Cloud project registered for Earth Engine
+  asset_root: null         # e.g. projects/<project>/assets  (needed for the asset export stage)
+
+  # ~30 x 30 km study area in Värmland (forested, managed land N of Hagfors).
+  # Confirm or replace with scripts/00_feasibility.py before experiments.
+  aoi:
+    center_lon: 13.10
+    center_lat: 60.15
+    size_m: 30000
+
+  crs: EPSG:3006           # SWEREF99 TM: equal-sided 30 m cells (Hansen's native
+  grid_m: 30               # 0.00025 deg pixels are ~28 x 14 m at 60 N)
+  block_m: 3000            # geographic block size for spatial splitting
+
+  s2_collection: COPERNICUS/S2_SR_HARMONIZED
+  cloud_prob_collection: COPERNICUS/S2_CLOUD_PROBABILITY
+  hansen_asset: UMD/hansen/global_forest_change_2025_v1_13
+
+  before: {start: "2023-06-01", end: "2023-09-01"}   # end date is exclusive
+  after:  {start: "2025-06-01", end: "2025-09-01"}
+
+  max_scene_cloud_pct: 80          # scene-level pre-filter
+  cloud_prob_threshold: 40         # pixel masked if s2cloudless probability >= this
+  # SCL classes masked: 0 no data, 1 saturated/defective, 3 cloud shadow, 6 water,
+  # 8/9 cloud medium/high probability, 10 thin cirrus, 11 snow/ice
+  scl_mask_classes: [0, 1, 3, 6, 8, 9, 10, 11]
+  bands: {red: B4, nir: B8, swir1: B11, swir2: B12}
+
+  treecover_threshold: 30          # Hansen treecover2000 (%) mean over the cell
+  loss_year: 24                    # lossyear code for 2024
+  loss_fraction_min: 0.5           # share of the cell mapped as 2024 loss
+  min_valid_obs: 3                 # mean valid observations per cell, each period
+
+  sample:
+    n_stable: 30000
+    n_loss: 8000                   # loss class enrichment; all available if fewer
+    tile_scale: 4
+
+  export:
+    drive_folder: forest_disturbance
+    prefix: varmland
+
+feasibility:
+  min_loss_cells: 1500
+  min_loss_per_block: 20           # a block "has loss" if it holds at least this many
+  min_blocks_with_loss: 15
+
+spark:
+  master: "local[*]"
+  driver_memory: 4g
+  shuffle_partitions: 8
+  parquet_partitions: 4
+
+split:
+  fractions: {train: 0.6, val: 0.2, test: 0.2}
+  buffer_m: 60                     # drop cells this close to a block of another split
+  min_loss_per_split: 200
+  min_stable_per_split: 1000
+  n_trials: 300                    # random block assignments tried; best is kept
+
+autoencoder:
+  # One dense template for all feature sets: in -> hidden -> latent -> hidden -> in.
+  hidden_units: 16
+  latent_divisor: 3                # latent = max(1, n_features // latent_divisor)
+  noise_std: 0.1                   # Gaussian input noise (denoising), standardized units
+  learning_rate: 0.001
+  batch_size: 256
+  max_epochs: 200
+  patience: 15                     # early stopping on stable validation loss
+  # Predeclared tuning budget (validation data only, selected by validation AP):
+  tuning_grid:
+    hidden_units: [16, 32]
+    noise_std: [0.05, 0.1, 0.2]
+
+evaluation:
+  n_bootstrap: 1000                # paired block bootstrap for model differences
+
+benchmark:
+  sizes: [2000, 8000, 20000]
+  repeats: 3
+  inference_batch_size: 1024
+  include_prep_report: false       # time the pipeline without diagnostic count actions

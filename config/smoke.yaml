@@ -1,0 +1,31 @@
+# Pipeline smoke test on SYNTHETIC data (scripts/make_smoke_data.py).
+# Results from this config test the code only; they are not evidence of anything.
+extends: config.yaml
+
+project:
+  model_seeds: [42]
+
+paths:
+  raw_dir: data/smoke/raw
+  processed_dir: data/smoke/processed
+  bench_dir: data/smoke/bench
+  models_dir: data/smoke/models
+  results_dir: data/smoke/results
+
+split:
+  n_trials: 50
+  min_loss_per_split: 50
+  min_stable_per_split: 200
+
+autoencoder:
+  max_epochs: 20
+  tuning_grid:
+    hidden_units: [16]
+    noise_std: [0.1]
+
+evaluation:
+  n_bootstrap: 100
+
+benchmark:
+  sizes: [1000, 4000]
+  repeats: 2
