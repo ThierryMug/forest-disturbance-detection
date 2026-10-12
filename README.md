@@ -1,6 +1,6 @@
 # Scalable Forest Disturbance Detection
 
-IT741A Big Data Programming project. Does enriching an autoencoder's inputs beyond NDVI
+ Big Data Programming project. Does enriching an autoencoder's inputs beyond NDVI
 change improve agreement with mapped 2024 tree-cover loss (Hansen GFC v1.13) in a ~30 × 30 km
 area of Värmland, and how do preparation and inference costs grow with the number of records?
 
